@@ -7,6 +7,7 @@
 
 namespace Jacobcyl\AliOSS;
 
+use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use League\Flysystem\Adapter\AbstractAdapter;
 use League\Flysystem\AdapterInterface;
@@ -577,21 +578,22 @@ class AliOssAdapter extends AbstractAdapter
 
 
     /**
-     * @param $path
-     * @param $expire
+     * @param string $path
+     * @param int|\Carbon\Carbon $expire
      * @param $options
      * @return string
      * @throws FileNotFoundException
      * @throws OssException
      */
-    public function getTemporaryUrl($path, $expire = 600, $options) {
+    public function getTemporaryUrl($path, $expire = 600, $options = []) {
+        $expire = is_numeric($expire)?(int)$expire:Carbon::parse($expire)->diffInSeconds();
         if (!$this->has($path))
             throw new FileNotFoundException($path.' not found');
         $method = OssClient::OSS_HTTP_GET;
         if (Arr::has($options, OssClient::OSS_METHOD)) {
             $method = $options['method'];
         }
-        return $this->getClient()
+        return tap($this->getClient(),function(\OSS\OssClient $client){$client->setUseSSL(true);})
             ->signUrl(
                 $this->getBucket(),
                 $path,
